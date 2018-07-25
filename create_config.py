@@ -5,17 +5,29 @@ import rarfile
 from tqdm import tqdm
 from dbfread import DBF
 import os
- 
+import sys 
  
 def create_connection(db_file):
     """ create a database connection to a SQLite database """
     try:
         conn = sqlite3.connect(db_file)
-        print(sqlite3.version)
+        return conn
     except Error as e:
         print(e)
-    finally:
-        conn.close()
+
+    return None
+
+def create_table(conn, create_table_sql):
+    """ create a table from the create_table_sql statement
+    :param conn: Connection object
+    :param create_table_sql: a CREATE TABLE statement
+    :return:
+    """
+    try:
+        c = conn.cursor()
+        c.execute(create_table_sql)
+    except Error as e:
+        print(e)
 
 def sanitised_input(prompt, type_=None, min_=None, max_=None, range_=None):
     if min_ is not None and max_ is not None and max_ < min_:
@@ -46,8 +58,55 @@ def sanitised_input(prompt, type_=None, min_=None, max_=None, range_=None):
                                                        str(range_[-1])))))
         else:
             return ui 
+
+def check_name_config(cur, name):
+    sql = 'Select * from region where name = "%s"' % name
+    cur.execute(sql)
+    r = cur.fetchone()
+    if (r != None):
+        return True
+    else:
+        return False
+
+def check_db(database):
+    sql_create_region_table = """CREATE TABLE IF NOT EXISTS region (
+                                id INTEGER  PRIMARY KEY AUTOINCREMENT UNIQUE,
+                                name TEXT,
+                                short TEXT,
+                                cod CHAR (2),
+                                use BOOLEAN,
+                                full_base DATE,
+                                last_update DATE
+                            );"""
+    conn = create_connection(database)
+    if conn is not None:
+        create_table(conn, sql_create_region_table)
+    else:
+        print("Error! cannot create the database connection.")
+        sys.exit(-1)
+
+def writeconfig(conn, name, short, cod, use):
+    cur = conn.cursor()
+    if check_name_config(cur, name):
+        #update
+        sql = """update region 
+                    set name = '%s',
+                    short = '%s',
+                    cod = '%s',
+                    use = %s
+                where name = '%s'
+                    """ % (name, short, cod, use, name)
+    else:
+        #insert
+        sql = 'insert into region(name,short,cod,use) values("%s","%s","%s",%s)' % (name, short, cod, use)
+    cur.execute(sql)
+    conn.commit()
+    conn.close()
+
+
  
 if __name__ == '__main__':
+    check_db(".\\DB\\config.sqlite")
     #create_connection(".\\DB\\config.sqlite")
     rf = rarfile.RarFile('.\\update\\full\\fias_dbf.rar')
     print(len([elem for elem in rf.namelist() if elem[0:6] == 'ADDROB']))
@@ -70,9 +129,6 @@ if __name__ == '__main__':
             fileWrite.close()
         #распаковали файл
         with DBF('.\\tmp\\' + i1) as table:
-        #table = DBF('.\\tmp\\' + i1)
-
-#        table = dbf.Table('.\\tmp\\' + i1).open()
             offname = ''
             shortname = ''
             regioncode = ''
@@ -82,10 +138,11 @@ if __name__ == '__main__':
                     shortname = row['SHORTNAME'].rstrip()
                     regioncode = row['REGIONCODE'].rstrip()
                     break
-                #print(row)
-#        table.close()
-        answer = sanitised_input(' Обрабатывать ' + offname + ' ' + shortname + ' y/n ',str.lower, range_=('y', 'n'))
-        print(answer)
         if os.path.isfile('.\\tmp\\' + i1):
             os.remove('.\\tmp\\' + i1)
-        #tqdm.write(i1)
+        answer = sanitised_input(' Обрабатывать ' + offname + ' ' + shortname + ' y/n ',str.lower, range_=('y', 'n'))
+        conn = create_connection(".\\DB\\config.sqlite")
+        if answer == 'y':
+            writeconfig(conn, offname, shortname, regioncode, 1)
+        else:
+            writeconfig(conn, offname, shortname, regioncode, 0)
