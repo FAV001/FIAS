@@ -5,8 +5,8 @@ import rarfile
 from tqdm import tqdm
 from dbfread import DBF
 import os
-import sys 
- 
+import sys
+
 def create_connection(db_file):
     """ create a database connection to a SQLite database """
     try:
@@ -57,7 +57,7 @@ def sanitised_input(prompt, type_=None, min_=None, max_=None, range_=None):
                                                                      range_[:-1])),
                                                        str(range_[-1])))))
         else:
-            return ui 
+            return ui
 
 def check_name_config(cur, name):
     sql = 'Select * from region where name = "%s"' % name
@@ -89,7 +89,7 @@ def writeconfig(conn, name, short, cod, use):
     cur = conn.cursor()
     if check_name_config(cur, name):
         #update
-        sql = """update region 
+        sql = """update region
                     set name = '%s',
                     short = '%s',
                     cod = '%s',
@@ -103,8 +103,6 @@ def writeconfig(conn, name, short, cod, use):
     conn.commit()
     conn.close()
 
-
- 
 if __name__ == '__main__':
     check_db(".\\DB\\config.sqlite")
     #create_connection(".\\DB\\config.sqlite")
