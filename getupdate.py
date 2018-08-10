@@ -94,8 +94,8 @@ def download_fias_full(use_proxy, proxy):
     str_lastupdatedate = open(getFile('http://fias.nalog.ru/Public/Downloads/Actual/VerDate.txt', use_proxy, '.\\update\\', proxy),'r').read()
     d_lastupdate = datetime.datetime.strptime(str_lastupdatedate, "%d.%m.%Y").date()
     sd = d_lastupdate.strftime("%Y%m%d")
-    url_fb = 'http://fias.nalog.ru/Public/Downloads/Actual/fias_delta_dbf.rar'
-    #url_fb = 'http://fias.nalog.ru/Public/Downloads/Actual/fias_dbf.rar'
+    #url_fb = 'http://fias.nalog.ru/Public/Downloads/Actual/fias_delta_dbf.rar'
+    url_fb = 'http://fias.nalog.ru/Public/Downloads/Actual/fias_dbf.rar'
     remotefilesize = getRemoteFileLength(url_fb, use_proxy, proxy)
     getFile(url_fb, use_proxy, '.\\update\\full\\', proxy, sd + '.tmp')
     localfilesize = os.path.getsize(fiasfile)
@@ -218,19 +218,22 @@ def main():
                     get_delta(spisok, full_base_update_date, use_proxy, proxy)
                 else:
                     #размер локального и удаленного файла не совпадают
-                    os.remove('.\\update\\full\\fias_dbf.rar')
-                    #удаляем файл и качаем полную актуальную версию
-                    #Скачиваем файл http://fias.nalog.ru/Public/Downloads/Actual/VerDate.txt определяем дату полной базы
-                    if os.path.isfile('.\\update\\VerDate.txt'):
-                        os.remove('.\\update\\VerDate.txt')
-                        str_lastupdatedate = open(getFile('http://fias.nalog.ru/Public/Downloads/Actual/VerDate.txt', use_proxy, '.\\update\\', proxy),'r').read()
-                        d_lastupdate = datetime.datetime.strptime(str_lastupdatedate, "%d.%m.%Y").date()
-                        sd = d_lastupdate.strftime("%Y%m%d")
-                        url_fb = 'http://fias.nalog.ru/Public/Downloads/Actual/fias_dbf.rar'
-                        filesize = getRemoteFileLength(url_fb, use_proxy, proxy)
-                        #getFile(url_fb, use_proxy, '.\\update\\full\\', proxy, sd + '.tmp')
-                        config['Update']['fullbase'] = sd
-                        config.write()
+                    isRen = False
+                    if len(os.listdir(".\\update\\full")) != 0:
+                        isRen = True
+                        fiasfile = ".\\update\\full\\" + os.listdir(".\\update\\full")[0]
+                        oldfiasfile = fiasfile + '.old'
+                        os.rename(fiasfile, oldfiasfile)
+                    try:
+                        if download_fias_full(use_proxy, proxy):
+                            os.remove(oldfiasfile)
+                            del_delta_update()
+                        else:
+                            os.rename(oldfiasfile, fiasfile)
+                    except Exception as inst:
+                        if isRen:
+                            os.rename(oldfiasfile, fiasfile)
+                        print(inst)
 
 if __name__ == '__main__':
     main()
