@@ -1,6 +1,6 @@
 # Получение файлов обновлений FIAS с сайта налоговой
 from configobj import ConfigObj
-from zeep.client import Client
+from zeep import Client
 from requests import Session
 import requests
 from zeep.transports import Transport
@@ -16,33 +16,33 @@ from progressbar import AnimatedMarker, Bar, BouncingBar, Counter, ETA, \
 def getFile(link, useproxy, dest=None, proxy=None, temp_part=None):
     chunk_size = 10240
     if useproxy == True:
-        pr = proxy['http']
-        auth=(pr.split('//'))[1].split('@')[0]
-        ur = (pr.split('//'))[0]+'//'+(pr.split('//'))[1].split('@')[1]
-        default_headers = urllib3.make_headers(proxy_basic_auth=auth)
-        http = urllib3.ProxyManager(ur, headers=default_headers)
+        r = requests.get(link, stream=True, proxies=proxy)
+        # pr = proxy['http']
+        # auth=(pr.split('//'))[1].split('@')[0]
+        # ur = (pr.split('//'))[0]+'//'+(pr.split('//'))[1].split('@')[1]
+        # default_headers = urllib3.make_headers(proxy_basic_auth=auth)
+        # urllib3.disable_warnings()
+        # http = urllib3.ProxyManager(pr)#, headers=default_headers)
     else:
-        http = urllib3.PoolManager()
+        # http = urllib3.PoolManager()
+        r = requests.get(link, stream=True)
     t = (lambda t: temp_part if temp_part != None else '.tmp')(temp_part)
     if dest != None:
         filename = dest + link.split('/')[-1] + t
     else:
         filename = link.split('/')[-1] + t
-    r = http.request('GET', link, preload_content=False)
+    #r = http.request('GET', link, preload_content=False)
     remotefilesize = int(r.headers['Content-Length'])
     widgets = [filename + ': ', Percentage(), ' ', Bar(marker=RotatingMarker()),
                ' ', ETA(), ' ', FileTransferSpeed()]
     pbar = ProgressBar(widgets=widgets, maxval=remotefilesize).start()
     cur_pos = 0
     with open(filename, 'wb') as out:
-        while True:
-            data = r.read(chunk_size)
-            if not data:
-                break
+        for data in r.iter_content(chunk_size=chunk_size):
             out.write(data)
             cur_pos += len(data)
             pbar.update(cur_pos)
-        r.release_conn()
+        r.close()
     pbar.finish()
     # сравниваем сколько на диске размер файла и сколько должно быть. Если совпадает то переименовываем temp файл
     if remotefilesize == os.path.getsize(filename):
@@ -127,32 +127,37 @@ def main():
     use_proxy = config.get('Proxy').as_bool('use_proxy')
     if use_proxy == True:
         proxy_list = config['Proxy']['Proxy']
-        proxy = {'http': 'http://' + proxy_list}
+        #proxy = {'http': 'http://' + proxy_list}
+        proxy = {'http': 'http://' + proxy_list, 'https': 'https://' + proxy_list,}
         session = Session()
+        session.verify = False
         session.proxies = proxy
-        client = Client(wsdl=wsdl, transport=Transport(session=session))
+        transport = Transport(session=session)
+        client = Client(wsdl=wsdl, transport=transport)
     else:
         client = Client(wsdl=wsdl)
     maxdeltaupdate = int(config['Update']['maxdeltaupdate'])
-    currentdeltaupdate = len(os.listdir('.\\update\\delta\\'))
-    if currentdeltaupdate > maxdeltaupdate:
-        #необходимо закачать полную базу и удалить дельты
-        isRen = False
-        if len(os.listdir(".\\update\\full")) != 0:
-            isRen = True
-            fiasfile = ".\\update\\full\\" + os.listdir(".\\update\\full")[0]
-            oldfiasfile = fiasfile + '.old'
-            os.rename(fiasfile, oldfiasfile)
-        try:
-            if download_fias_full(use_proxy, proxy):
-                os.remove(oldfiasfile)
-                del_delta_update()
-            else:
-                os.rename(oldfiasfile, fiasfile)
-        except Exception as inst:
-            if isRen:
-                os.rename(oldfiasfile, fiasfile)
-            print(inst)
+    if maxdeltaupdate != -1: # при -1 не используем любое количество delta обновлений
+        currentdeltaupdate = len(os.listdir('.\\update\\delta\\'))
+        if currentdeltaupdate > maxdeltaupdate:
+            #необходимо закачать полную базу и удалить дельты
+            isRen = False
+            if len(os.listdir(".\\update\\full")) != 0:
+                isRen = True
+                fiasfile = ".\\update\\full\\" + os.listdir(".\\update\\full")[0]
+                oldfiasfile = fiasfile + '.old'
+                os.rename(fiasfile, oldfiasfile)
+            try:
+                if download_fias_full(use_proxy, proxy):
+                    os.remove(oldfiasfile)
+                    del_delta_update()
+                else:
+                    os.rename(oldfiasfile, fiasfile)
+            except Exception as inst:
+                if isRen:
+                    os.rename(oldfiasfile, fiasfile)
+                print(inst)
+            return
     else:
         #делаем все проверки
         if config['Update']['fullbase'] =='':
