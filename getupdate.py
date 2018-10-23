@@ -137,7 +137,7 @@ def main():
     else:
         client = Client(wsdl=wsdl)
     maxdeltaupdate = int(config['Update']['maxdeltaupdate'])
-    if maxdeltaupdate != -1: # при -1 не используем любое количество delta обновлений
+    if maxdeltaupdate != 0: # при 0 не используем любое количество delta обновлений
         currentdeltaupdate = len(os.listdir('.\\update\\delta\\'))
         if currentdeltaupdate > maxdeltaupdate:
             #необходимо закачать полную базу и удалить дельты
