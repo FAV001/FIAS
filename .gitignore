@@ -1,4 +1,6 @@
-
+settings.json
 update/
 fias.cfg
 tmp/
+.vscode/settings.json
+.gitignore

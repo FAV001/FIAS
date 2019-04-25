@@ -1,3 +1,4 @@
+# -*- coding: UTF-8 -*-
 # Получение файлов обновлений FIAS с сайта налоговой
 from configobj import ConfigObj
 from zeep import Client
@@ -31,7 +32,7 @@ def getFile(link, useproxy, dest=None, proxy=None, temp_part=None):
         filename = dest + link.split('/')[-1] + t
     else:
         filename = link.split('/')[-1] + t
-    #r = http.request('GET', link, preload_content=False)
+    # r = http.request('GET', link, preload_content=False)
     remotefilesize = int(r.headers['Content-Length'])
     widgets = [filename + ': ', Percentage(), ' ', Bar(marker=RotatingMarker()),
                ' ', ETA(), ' ', FileTransferSpeed()]
@@ -94,7 +95,7 @@ def download_fias_full(use_proxy, proxy):
     str_lastupdatedate = open(getFile('http://fias.nalog.ru/Public/Downloads/Actual/VerDate.txt', use_proxy, '.\\update\\', proxy),'r').read()
     d_lastupdate = datetime.datetime.strptime(str_lastupdatedate, "%d.%m.%Y").date()
     sd = d_lastupdate.strftime("%Y%m%d")
-    #url_fb = 'http://fias.nalog.ru/Public/Downloads/Actual/fias_delta_dbf.rar'
+    # url_fb = 'http://fias.nalog.ru/Public/Downloads/Actual/fias_delta_dbf.rar'
     url_fb = 'http://fias.nalog.ru/Public/Downloads/Actual/fias_dbf.rar'
     remotefilesize = getRemoteFileLength(url_fb, use_proxy, proxy)
     getFile(url_fb, use_proxy, '.\\update\\full\\', proxy, sd + '.tmp')
@@ -122,7 +123,7 @@ def main():
     global config
     fiasfile = '.\\update\\full\\fias_dbf.rar'
     oldfiasfile = '.\\update\\full\\fias_dbf.old.rar'
-    wsdl = 'http://fias.nalog.ru/WebServices/Public/DownloadService.asmx?WSDL' #ссылка на сервис получения обновлений сайт Налоговой
+    wsdl = 'http://fias.nalog.ru/WebServices/Public/DownloadService.asmx?WSDL' # ссылка на сервис получения обновлений сайт Налоговой
     config = ConfigObj('fias.cfg', encoding='UTF8')
     use_proxy = config.get('Proxy').as_bool('use_proxy')
     if use_proxy == True:
@@ -140,7 +141,7 @@ def main():
     if maxdeltaupdate != 0: # при 0 не используем любое количество delta обновлений
         currentdeltaupdate = len(os.listdir('.\\update\\delta\\'))
         if currentdeltaupdate > maxdeltaupdate:
-            #необходимо закачать полную базу и удалить дельты
+            # необходимо закачать полную базу и удалить дельты
             isRen = False
             if len(os.listdir(".\\update\\full")) != 0:
                 isRen = True
@@ -159,38 +160,38 @@ def main():
                 print(inst)
             return
     else:
-        #делаем все проверки
+        # делаем все проверки
         if config['Update']['fullbase'] =='':
             # в конфиге дата отсутствует. Надо брать полную последнюю базу
             if len(os.listdir(".\\update\\full")) != 0:
-                #в каталоге полной базы есть файлы
+                # в каталоге полной базы есть файлы
                 if os.path.isfile('.\\update\\full\\fias_dbf.rar'):
-                    #получаем размер локального файла
+                    # получаем размер локального файла
                     localfilesize = os.path.getsize('.\\update\\full\\fias_dbf.rar')
-                    #на диске есть файл fias_dbf.rar - определяем за какую он дату
+                    # на диске есть файл fias_dbf.rar - определяем за какую он дату
                     spisok = client.service.GetAllDownloadFileInfo()
-                    #print(spisok)
+                    # rint(spisok)
                     check_fias = False
                     for row in spisok:
                         remotefilesize = getRemoteFileLength(row.FiasCompleteDbfUrl, use_proxy, proxy)
                         if localfilesize == remotefilesize:
-                            #нашли дату
+                            # нашли дату
                             check_fias = True
                             du = datetime.datetime.strptime((row.FiasCompleteDbfUrl).split('/')[-2], "%Y%m%d").date()
                             config['Update']['fullbase'] = du.strftime("%Y%m%d")
                             config.write()
                             break
                     if check_fias:
-                        #нашли дату полной базы для файла на диске
+                        # нашли дату полной базы для файла на диске
                         print('нашли дату полной базы для файла на диске ' + du.strftime("%Y%m%d"))
                         get_delta(spisok, du, use_proxy, proxy)
                     else:
-                        #не нашли дату полной базы для файла на диске
+                        # не нашли дату полной базы для файла на диске
                         print('не нашли дату полной базы для файла на диске')
                 else:
                     print('файл есть но он не fias_dbf.rar')
             else:
-                #Скачиваем файл http://fias.nalog.ru/Public/Downloads/Actual/VerDate.txt определяем дату полной базы
+                # Скачиваем файл http://fias.nalog.ru/Public/Downloads/Actual/VerDate.txt определяем дату полной базы
                 if os.path.isfile('.\\update\\VerDate.txt'):
                     os.remove('.\\update\\VerDate.txt')
                 str_lastupdatedate = open(getFile('http://fias.nalog.ru/Public/Downloads/Actual/VerDate.txt', use_proxy, '.\\update\\', proxy),'r').read()
