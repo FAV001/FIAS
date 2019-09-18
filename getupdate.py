@@ -34,8 +34,16 @@ def getFile(link, useproxy, dest=None, proxy=None, temp_part=None):
         filename = link.split('/')[-1] + t
     # r = http.request('GET', link, preload_content=False)
     remotefilesize = int(r.headers['Content-Length'])
-    widgets = [filename + ': ', Percentage(), ' ', Bar(marker=RotatingMarker()),
-               ' ', ETA(), ' ', FileTransferSpeed()]
+    widgets = [
+        filename + ': ',
+        Percentage(),
+        ' ',
+        Bar(marker=RotatingMarker()),
+        ' ',
+        ETA(),
+        ' ',
+        FileTransferSpeed()
+    ]
     pbar = ProgressBar(widgets=widgets, maxval=remotefilesize).start()
     cur_pos = 0
     with open(filename, 'wb') as out:
