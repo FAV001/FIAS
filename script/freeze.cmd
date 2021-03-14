@@ -1,1 +1,2 @@
-pip freeze > .\.\requirements.txt
+cd ..
+venv\Scripts\pip freeze > .\requirements.txt
