@@ -158,6 +158,101 @@ def main():
             for name in dirs:
                 os.rmdir(os.path.join(root, name))
 
+    def get_delta(fias_spisok, data, useproxy, proxy=None):
+        # качаем все файлы дельта обновлений начиная с даты data
+        try:
+            if config['Update']['lastupdateid'] == '':
+                lastupdateid = 0
+            else:
+                lastupdateid = int(config['Update']['lastupdateid'])
+        except:
+            lastupdateid = 0
+        maxid = lastupdateid
+        for row in  reversed(fias_spisok):
+            print(row)
+            row_data = datetime.datetime.strptime(row.Date,'%d.%m.%Y').date()
+            if row.VersionId > maxid:
+                maxid = row.VersionId
+            if row_data > data:
+                row_sdate = row_data.strftime('%Y.%m.%d')
+                delta_dir = PROJECT_ROOT / './update/delta' / row_sdate
+                delta_file = delta_dir / 'fias_delta_dbf.zip'
+                remotefilesize = getRemoteFileLength(row.FiasDeltaDbfUrl, useproxy, proxy)
+            #     # print('Дата обновления (%s) > даты базы (%s)' % (row_data, data))
+            #     # проверяем существет ли каталог по дате
+                if (delta_dir).exists():
+                # if os.path.isdir('.\\update\\delta\\' + row_data.strftime("%Y%m%d")):
+                    # каталог существует, проверим наличие файлов
+                    if (delta_file).exists():
+                    # if os.path.isfile('.\\update\\delta\\' + row_data.strftime("%Y%m%d") + '\\fias_delta_dbf.zip'):
+                        # файл обновления существует
+                        localfilesize = delta_file.stat().st_size
+                        if localfilesize == remotefilesize:
+                            print('Дельта обновление за %s на диске - стус - pass' % row_data)
+                        else:
+                            print('Дельта обновление за %s на диске - стус - fail' % row_data)
+                            try:
+                                delta_file.unlink()
+                                print(f'Удалили файл {str(delta_file)}')
+                            except Exception as e:
+                                print(f'При удалении файл {str(delta_file)} возникла ошибка {e}') 
+                            # os.remove('.\\update\\delta\\' + row_data.strftime("%Y%m%d") + '\\fias_delta_dbf.rar')
+                            # filelength = 0
+                            # while True:
+                            #     filename, filelength, downloaded = getFile(
+                            #         row.FiasDeltaDbfUrl, 
+                            #         USE_PROXY, 
+                            #         str(delta_file),
+                            #         proxy, 
+                            #         start_pos=filelength)
+                            #     if downloaded:
+                            #         if filelength == remotefilesize:
+                            #             return True
+                            #     else:
+                            #         if filelength == -1:
+                            #             return False
+                            # getFile(row.FiasDeltaDbfUrl, useproxy, '.\\update\\delta\\' + row_data.strftime("%Y%m%d") + '\\', proxy, row_data.strftime("%Y%m%d") + '.tmp')
+                    # else:
+                    #     filelength = 0
+                    #     while True:
+                    #         filename, filelength, downloaded = getFile(
+                    #             row.FiasDeltaDbfUrl, 
+                    #             USE_PROXY, 
+                    #             str(delta_file),
+                    #             proxy, 
+                    #             start_pos=filelength)
+                    #         if downloaded:
+                    #             if filelength == remotefilesize:
+                    #                 return True
+                    #         else:
+                    #             if filelength == -1:
+                    #                 return False
+                        # getFile(row.FiasDeltaDbfUrl, useproxy, '.\\update\\delta\\' + row_data.strftime("%Y%m%d") + '\\', proxy, row_data.strftime("%Y%m%d") + '.tmp')
+                else:
+                    # каталога нет, качаем файл
+                    delta_dir.mkdir(parents=True, exist_ok=True)
+                filelength = 0
+                while True:
+                    filename, filelength, downloaded = getFile(
+                        row.FiasDeltaDbfUrl, 
+                        USE_PROXY, 
+                        str(delta_dir),
+                        proxy, 
+                        start_pos=filelength)
+                    if downloaded:
+                        if filelength == remotefilesize:
+                            break
+                            # return True
+                    else:
+                        if filelength == -1:
+                            break
+                            # return False
+        config['Update']['lastupdateid'] = maxid
+        try:
+            config.write()
+        except Exception as identifier:
+            print('error ' + identifier)
+
 
     fiasfile = PROJECT_ROOT / './update/full/fias_dbf.zip'
     if USE_PROXY:
@@ -244,16 +339,16 @@ def main():
         if currentdeltaupdate >= maxdeltaupdate:
             if fiasfile.is_file():
                 try:
-                    pass
-                #    fiasfile.unlink()
+                    # pass
+                   fiasfile.unlink()
                 except Exception as identifier:
                     print(f'При удалении файл {fiasfile} возникла ошибка {identifier}')
-        del_delta_update(str(PROJECT_ROOT / './update/delta'))
-        print('Удалили все дельта обновления')
-            # if download_fias_full():
-            #     print('Закачали полную базу FIAS за дату {}'.format(config['Update']['fullbase']))
-            #     del_delta_update(str(PROJECT_ROOT / './update/delta'))
-            #     print('Удалили все дельта обновления')
+        # del_delta_update(str(PROJECT_ROOT / './update/delta'))
+        # print('Удалили все дельта обновления')
+            if download_fias_full():
+                print('Закачали полную базу FIAS за дату {}'.format(config['Update']['fullbase']))
+                del_delta_update(str(PROJECT_ROOT / './update/delta'))
+                print('Удалили все дельта обновления')
     #     else:
     #         # не достигли предела по количеству дельта обновлений
     #         pass
@@ -262,7 +357,7 @@ def main():
     # spisok = client.service.GetAllDownloadFileInfo()
     # качаем дельты, если они есть
     full_base_update_date = datetime.datetime.strptime(config['Update']['fullbase'], '%Y.%m.%d').date()
-    # get_delta(spisok, full_base_update_date, use_proxy, proxy)
+    get_delta(spisok, full_base_update_date, USE_PROXY, proxy)
 
 if __name__ == '__main__':
     main()
